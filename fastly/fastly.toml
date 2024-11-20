@@ -10,4 +10,4 @@ name = "plebscript"
 service_id = "vcweNYbNWMRc4i94nitgC0"
 
 [scripts]
-build = "cargo build --bin plebscript --release --target wasm32-wasi --color always"
+build = "cargo build --bin plebscript-fastly --release --target wasm32-wasi --color always"

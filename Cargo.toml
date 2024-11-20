@@ -1,3 +1,8 @@
+[workspace]
+members = [
+  "fastly"
+]
+
 [package]
 name = "plebscript"
 version = "0.1.0-dev"
@@ -5,14 +10,9 @@ authors = []
 edition = "2018"
 publish = false
 
-[profile.release]
-debug = 1
-
 [dependencies]
-fastly = "0.10"
-include_dir = "0.7"
+anyhow = "1.0.93"
 piccolo = { git = "https://github.com/kyren/piccolo.git", rev = "fcbaabc924292170d6549c55440ecbd0522b275a"}
 piccolo-util = { git = "https://github.com/kyren/piccolo.git", rev = "fcbaabc924292170d6549c55440ecbd0522b275a"}
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-urlencoding = "2.1"
