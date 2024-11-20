@@ -39,11 +39,20 @@ pub struct ScriptResponse {
     pub body: Option<ScriptResponseBody>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, PartialEq, Eq, Debug)]
 #[serde(untagged)]
 pub enum ScriptResponseBody {
     String(String),
     Table(serde_json::Value),
+}
+
+impl PartialEq<&str> for ScriptResponseBody {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            ScriptResponseBody::String(s) => s == other,
+            ScriptResponseBody::Table(_) => false,
+        }
+    }
 }
 
 pub fn run_lua(src: &[u8], req: ScriptRequest) -> Result<ScriptResponse> {
