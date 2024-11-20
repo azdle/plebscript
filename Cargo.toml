@@ -16,3 +16,10 @@ piccolo-util = { git = "https://github.com/kyren/piccolo.git", rev = "fcbaabc924
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 urlencoding = "2.1"
+
+[dev-dependencies]
+anyhow = "1"
+http = "0.2"
+hyper = "0.14"
+tokio = { version = "1", features = ["full"] }
+viceroy-lib = "0.12"
