@@ -1,0 +1,5 @@
+[build]
+target = "wasm32-wasip1"
+
+[profile.dev.package.cranelift]
+opt-level = 3

@@ -1,0 +1,13 @@
+# This file describes a Fastly Compute package. To learn more visit:
+# https://www.fastly.com/documentation/reference/compute/fastly-toml
+
+authors = ["patrick@psbarrett.com"]
+cloned_from = "https://github.com/fastly/compute-starter-kit-rust-default"
+description = ""
+language = "rust"
+manifest_version = 3
+name = "plebscript"
+service_id = "vcweNYbNWMRc4i94nitgC0"
+
+[scripts]
+build = "cargo build --bin plebscript --release --target wasm32-wasi --color always"
