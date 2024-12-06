@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::Result;
+use anyhow::{anyhow, Context as _};
 use piccolo::{Closure, Executor, Fuel, Lua, Table, Value, Variadic};
 use serde::{Deserialize, Serialize};
 
@@ -55,54 +55,56 @@ impl PartialEq<&str> for ScriptResponseBody {
     }
 }
 
-pub fn run_lua(src: &[u8], req: ScriptRequest) -> Result<ScriptResponse> {
+pub fn run_lua(src: &[u8], req: ScriptRequest) -> Result<ScriptResponse, ScriptRuntimeError> {
     let name = "user script";
     let mut lua = Lua::core();
 
     Ok(lua.try_enter(|ctx| {
         // populate `request` table
-        let req_value = piccolo_util::serde::ser::to_value(ctx, &req).expect("valuize request");
+        let req_value = piccolo_util::serde::ser::to_value(ctx, &req).context("valuize request")?;
         ctx.set_global("request", req_value);
 
         // load webscript lib
-        let webscript =
-            Closure::load(ctx, Some("webscript.lua"), WEBSCRIPT_LIB).expect("load webscript lib");
+        let webscript = Closure::load(ctx, Some("webscript.lua"), WEBSCRIPT_LIB)
+            .context("load webscript lib")?;
 
         let exe = Executor::start(ctx, webscript.into(), ());
 
         let mut fuel = Fuel::with(8192);
-        while !exe.step(ctx, &mut fuel).expect("step WS") {
+        while !exe.step(ctx, &mut fuel).context("load webscript")? {
             fuel.refill(8192, 8192);
         }
 
         let ws: Table = exe
             .take_result(ctx)
-            .expect("failed to load webscript lib")
-            .expect("take ws lib");
+            .context("failed to load webscript lib")?
+            // TODO: .context("take ws lib")
+            ?;
 
         let Ok(Value::Table(ws_env)) = ws.get(ctx, "env") else {
-            panic!("WS.env value wasn't a table");
+            return Err(anyhow!("WS.env value wasn't a table").into());
         };
 
         let Ok(Value::Function(process_response)) = ws.get(ctx, "process_response") else {
-            panic!("`process_response` wasn't a function")
+            return Err(anyhow!("`process_response` wasn't a function").into());
         };
 
-        // run user script in webscript envi
+        // run user script in webscript env
         // TODO: this is still getting the global env for some reason
-        let script = Closure::load_with_env(ctx, Some(name), src, ws_env).expect("load");
+        let script = Closure::load_with_env(ctx, Some(name), src, ws_env).context("load")?;
 
         let exe = Executor::start(ctx, script.into(), ());
 
         let mut fuel = Fuel::with(8192);
-        while !exe.step(ctx, &mut fuel).expect("step script") {
+        while !exe.step(ctx, &mut fuel).context("step script")? {
             fuel.refill(8192, 8192);
         }
 
         let res: Variadic<Vec<Value>> = exe
             .take_result(ctx)
-            .expect("failed to run to completion")
-            .expect("take intermideate result");
+            .context("failed to run to completion")?
+            // TODO: .context("take intermideate result")
+            ?;
 
         println!("res: {res:?}");
 
@@ -110,17 +112,38 @@ pub fn run_lua(src: &[u8], req: ScriptRequest) -> Result<ScriptResponse> {
         let exe = Executor::start(ctx, process_response, res);
 
         let mut fuel = Fuel::with(8192);
-        while !exe.step(ctx, &mut fuel).expect("step PR") {
+        while !exe.step(ctx, &mut fuel).context("step PR")? {
             fuel.refill(8192, 8192);
         }
 
         let resp_tbl = exe
             .take_result(ctx)
-            .expect("failed to run to completion")
-            .expect("take result table");
+            .context("failed to run to completion")?
+            // TODO: .context("take result table")
+            ?;
 
-        let sresp: ScriptResponse = piccolo_util::serde::de::from_value(resp_tbl).unwrap();
+        let sresp: ScriptResponse =
+            piccolo_util::serde::de::from_value(resp_tbl).context("handle response")?;
 
         Ok(sresp)
     })?)
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ScriptRuntimeError {
+    #[error("Runtime Error: {0}")]
+    Runtime(piccolo::RuntimeError),
+    #[error("Lua Error: {0}")]
+    Lua(piccolo::error::ExternLuaError),
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
+}
+
+impl From<piccolo::ExternError> for ScriptRuntimeError {
+    fn from(value: piccolo::ExternError) -> Self {
+        match value {
+            piccolo::ExternError::Lua(e) => ScriptRuntimeError::Lua(e),
+            piccolo::ExternError::Runtime(e) => ScriptRuntimeError::Runtime(e),
+        }
+    }
 }

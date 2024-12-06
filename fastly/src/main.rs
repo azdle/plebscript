@@ -32,10 +32,9 @@ fn main(req: Request) -> Result<Response, Error> {
         path.push_str(".lua");
     };
 
-    println!("script path: {path}");
-    println!("SCRIPT_DIR: {SRC_DIR:?}");
-
     let Some(src) = SRC_DIR.get_file(&path) else {
+        println!("{path}, not found in script dir:\n{SRC_DIR:?}");
+
         return Ok(
             Response::from_status(StatusCode::NOT_FOUND).with_body_text_plain("404 Not Found")
         );
@@ -76,7 +75,14 @@ fn main(req: Request) -> Result<Response, Error> {
         ..Default::default()
     };
 
-    let sresp = run_lua(src.contents(), sreq).unwrap();
+    let sresp = match run_lua(src.contents(), sreq) {
+        Ok(sresp) => sresp,
+        Err(e) => {
+            return Ok(Response::new()
+                .with_status(StatusCode::INTERNAL_SERVER_ERROR)
+                .with_body_text_plain(&format!("{:?}", e)));
+        }
+    };
 
     // build response
     let mut resp = Response::new();
