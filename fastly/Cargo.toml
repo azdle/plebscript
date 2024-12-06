@@ -5,9 +5,6 @@ authors = []
 edition = "2018"
 publish = false
 
-[profile.release]
-debug = 1
-
 [dependencies]
 fastly = "0.10"
 include_dir = "0.7"
