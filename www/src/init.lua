@@ -13,6 +13,7 @@ This is an experiment to reimplement the API from (the now defunct) <a href="htt
   <li><a href="/returns/stringtable">/returns/stringtable</a></li>
   <li><a href="/returns/table">/returns/table</a></li>
   <li><a href="/returns/tabletable">/returns/tabletable</a></li>
+  <li><a href="/bin">/bin</a></li>
 </ul>
 
 <p><a href="https://github.com/azdle/plebscript">Source Code</a></p>
